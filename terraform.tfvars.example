@@ -1,0 +1,90 @@
+# ==============================================================================
+#  aws-security-group — terraform.tfvars
+# ==============================================================================
+#  Copy this file to `terraform.tfvars`, set the values, then run:
+#      tofu init && tofu apply        (or:  terraform init && terraform apply)
+#
+# AUTHENTICATION — AWS:
+#   The AWS provider authenticates exactly like the AWS SDK/CLI, resolving
+#   credentials through a fixed precedence chain and (separately) requiring a
+#   region.
+#   Quick start: aws sso login --profile <name> (or `aws configure sso`
+#   first-time setup; `aws configure` for static keys). The SDK/Terraform read
+#   the SSO/credential cache automatically.
+#   Environment variables Terraform reads:
+#     AWS_ACCESS_KEY_ID  (secret) — Access key ID for static/temporary credentials.
+#     AWS_SECRET_ACCESS_KEY  (secret) — Secret access key paired with the access key ID.
+#     AWS_SESSION_TOKEN  (secret) — Session token for temporary (STS) credentials.
+#     AWS_REGION — Target AWS region (required); preferred over AWS_DEFAULT_REGION.
+#     AWS_DEFAULT_REGION — Legacy region variable; used if AWS_REGION is unset.
+#   Full guide (auth + remote state):  docs/CONNECTING-PROVIDERS.md#aws
+#
+#  Secrets below read "REPLACE_ME" — never commit real secrets. Prefer
+#  TF_VAR_<name> environment variables or a secrets manager.
+#  Status: static-validated, live-test pending (see README.md).
+# ==============================================================================
+
+
+# ------------------------------------------------------------------------------
+#  REQUIRED — you must set these
+# ------------------------------------------------------------------------------
+
+# name  —  string  (REQUIRED)
+#   Name of the security group (also used as the Name tag).
+#   Constraint: name must be 1-200 valid security-group-name characters and must
+#   not start with "sg-".
+name        = "example-app"
+
+# vpc_id  —  string  (REQUIRED)
+#   ID of the VPC the security group lives in.
+#   Constraint: vpc_id must be a VPC ID (vpc-...).
+vpc_id      = "vpc-0123456789abcdef0"
+
+# ------------------------------------------------------------------------------
+#  OPTIONAL — defaults shown; uncomment a line to override
+# ------------------------------------------------------------------------------
+
+# description  —  string  (optional, default: "Managed by Terraform (IaC Bazaar)")
+#   Description of the security group. Changing it forces replacement --
+#   create_before_destroy is enabled so replacement is safe.
+description = "Example application tier"
+
+# use_name_prefix  —  bool  (optional, default: true)
+#   Use name as a name_prefix (random suffix appended). Keeps
+#   create_before_destroy replacements collision-free; disable only if you need
+#   the exact name.
+# use_name_prefix = true
+
+# ingress_rules  —  list  (optional, default: [])
+#   Constraint: Unknown ingress preset. See the presets table in the README for
+#   valid names.
+ingress_rules = [
+  { preset = "https", cidr_ipv4 = "0.0.0.0/0" },
+  { preset = "ssh", cidr_ipv4 = "10.0.0.0/8", description = "SSH from corp ranges" },
+  { preset = "postgres", referenced_security_group_id = "sg-0fedcba9876543210" },
+  { from_port = 9000, to_port = 9010, ip_protocol = "tcp", self = true, description = "Cluster gossip" },
+]
+
+# egress_rules  —  list  (optional, default: [])
+#   Egress rules; same shape as ingress_rules. Used to restrict egress when
+#   allow_all_egress = false (or to add extra scoped egress alongside it).
+#   Constraint: Unknown egress preset. See the presets table in the README for
+#   valid names.
+# egress_rules = []
+
+# allow_all_egress  —  bool  (optional, default: true)
+#   Create allow-all IPv4 + IPv6 egress rules. Set false for least-privilege
+#   egress and declare what you need in egress_rules.
+# allow_all_egress = true
+
+# revoke_rules_on_delete  —  bool  (optional, default: false)
+#   Revoke all rules before deleting the group -- helps teardown when groups
+#   reference each other.
+# revoke_rules_on_delete = false
+
+# tags  —  map  (optional, default: {})
+#   Tags applied to the security group and every rule.
+tags = {
+  Environment = "example"
+  ManagedBy   = "iac-bazaar"
+}
